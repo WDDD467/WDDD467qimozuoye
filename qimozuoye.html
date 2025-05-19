@@ -1,70 +1,93 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-    <meta charset="UTF-8" />
-    <title>宋词意象统计</title>
-    <style>
-        body { font-family: "宋体", SimSun, serif; margin: 30px; }
-        h1 { color: #333; }
-        #wordcloud { width: 600px; height: 400px; border: 1px solid #ccc; margin-bottom: 20px; }
-        #result { margin-top: 20px; white-space: pre-wrap; }
-        input[type="color"] { width: 50px; height: 30px; vertical-align: middle; }
-        button { padding: 6px 12px; margin-left: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>宋词词频互动页面</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.1.0/src/wordcloud2.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
+    #wordcloud { width: 600px; height: 400px; border: 1px solid #ccc; }
+  </style>
 </head>
 <body>
-    <h1>宋词意象词云与抽取</h1>
-    <div>
-        <label for="colorPicker">选择颜色：</label>
-        <input type="color" id="colorPicker" value="#ff0000" />
-        <button onclick="fetchPoem()">抽取含意象的诗句</button>
-    </div>
-    <canvas id="wordcloud"></canvas>
-    <div id="result"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.1.2/src/wordcloud2.min.js"></script>
-    <script>
-        let wordFreq = {};  // 这里要从后台接口获取真实数据
+<h2>宋词词频互动页面</h2>
 
-        // 模拟数据（你要用Ajax调用接口替换这里）
-        wordFreq = {
-            "风": 100,
-            "花": 80,
-            "雪": 60,
-            "月": 50,
-            "江": 40,
-            "山": 35,
-            "夜": 30,
-            "霜": 25,
-            "露": 20
-        };
+<!-- 功能按钮 -->
+<button onclick="showStat('风')">风</button>
+<button onclick="showStat('花')">花</button>
+<button onclick="showStat('雪')">雪</button>
+<button onclick="showStat('月')">月</button>
+<button onclick="showWordCloud()">看看哪个词用得最多</button>
 
-        // 词云绘制
-        const canvas = document.getElementById("wordcloud");
-        const wordList = Object.entries(wordFreq).map(([word, freq]) => [word, freq]);
-        WordCloud(canvas, {
-            list: wordList,
-            gridSize: 10,
-            weightFactor: 10,
-            fontFamily: '宋体, SimSun',
-            color: 'random-dark',
-            backgroundColor: '#fff'
-        });
+<div id="plot" style="width:600px;height:400px;"></div>
+<div id="wordcloud"></div>
 
-        // 点击抽取示例函数，真实情况调用你的Python后台接口
-        function fetchPoem() {
-            const color = document.getElementById('colorPicker').value;
-            // 这里调用后端接口传color，获取随机相关诗句，示范先写死
-            const poems = {
-                "风": "《蝶恋花》—苏轼：春风又绿江南岸，明月何时照我还？",
-                "花": "《如梦令》—李清照：昨夜雨疏风骤，浓睡不消残酒。",
-                "雪": "《白雪歌送武判官归京》—岑参：北风卷地白草折，胡天八月即飞雪。",
-                "月": "《水调歌头》—苏轼：明月几时有，把酒问青天。"
-            };
-            const keys = Object.keys(poems);
-            const pick = keys[Math.floor(Math.random() * keys.length)];
-            document.getElementById('result').textContent = `颜色: ${color}\n抽到意象: ${pick}\n对应诗句:\n${poems[pick]}`;
-        }
-    </script>
+<!-- 搜索词句功能 -->
+<h3>查一句含某词的诗句：</h3>
+<input type="text" id="searchWord" placeholder="输入词">
+<button onclick="searchSentence()">查找</button>
+<p id="result"></p>
+
+<script>
+let fenghuaStat = {};
+let wordMap = {};
+let wordcloudData = [];
+
+window.onload = async () => {
+  try {
+    fenghuaStat = await (await fetch("fenghua_stat.json")).json();
+    wordMap = await (await fetch("word_map.json")).json();
+    const rawCloud = await (await fetch("word_freq.json")).json();
+    wordcloudData = Object.entries(rawCloud).slice(0, 100); // 取前100个高频词
+  } catch (error) {
+    alert("数据加载失败，请检查文件是否存在于同目录下。");
+    console.error(error);
+  }
+};
+
+// 1. 显示“风花雪月”统计图
+function showStat(char) {
+  const data = fenghuaStat[char];
+  if (!data) {
+    alert(`没有关于 ${char} 的统计数据`);
+    return;
+  }
+  const poets = Object.keys(data);
+  const counts = Object.values(data);
+  Plotly.newPlot("plot", [{
+    x: poets,
+    y: counts,
+    type: "bar"
+  }], { title: `'${char}' 使用频率` });
+
+  document.getElementById("wordcloud").innerHTML = "";
+}
+
+// 2. 显示词云图
+function showWordCloud() {
+  document.getElementById("plot").innerHTML = ""; // 清空柱状图
+  WordCloud(document.getElementById('wordcloud'), {
+    list: wordcloudData,
+    gridSize: 8,
+    weightFactor: 10,
+    fontFamily: 'SimSun',
+    rotateRatio: 0.5,
+    click: function (item) {
+      document.getElementById("searchWord").value = item[0];
+    }
+  });
+}
+
+// 3. 搜索一句含某词的宋词
+function searchSentence() {
+  const word = document.getElementById("searchWord").value.trim();
+  const sentence = wordMap[word];
+  document.getElementById("result").textContent = sentence || "未找到包含该词的诗句。";
+}
+</script>
+
 </body>
 </html>
