@@ -1,1 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>宋词意象统计</title>
+    <style>
+        body { font-family: "宋体", SimSun, serif; margin: 30px; }
+        h1 { color: #333; }
+        #wordcloud { width: 600px; height: 400px; border: 1px solid #ccc; margin-bottom: 20px; }
+        #result { margin-top: 20px; white-space: pre-wrap; }
+        input[type="color"] { width: 50px; height: 30px; vertical-align: middle; }
+        button { padding: 6px 12px; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <h1>宋词意象词云与抽取</h1>
+    <div>
+        <label for="colorPicker">选择颜色：</label>
+        <input type="color" id="colorPicker" value="#ff0000" />
+        <button onclick="fetchPoem()">抽取含意象的诗句</button>
+    </div>
+    <canvas id="wordcloud"></canvas>
+    <div id="result"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.1.2/src/wordcloud2.min.js"></script>
+    <script>
+        let wordFreq = {};  // 这里要从后台接口获取真实数据
+
+        // 模拟数据（你要用Ajax调用接口替换这里）
+        wordFreq = {
+            "风": 100,
+            "花": 80,
+            "雪": 60,
+            "月": 50,
+            "江": 40,
+            "山": 35,
+            "夜": 30,
+            "霜": 25,
+            "露": 20
+        };
+
+        // 词云绘制
+        const canvas = document.getElementById("wordcloud");
+        const wordList = Object.entries(wordFreq).map(([word, freq]) => [word, freq]);
+        WordCloud(canvas, {
+            list: wordList,
+            gridSize: 10,
+            weightFactor: 10,
+            fontFamily: '宋体, SimSun',
+            color: 'random-dark',
+            backgroundColor: '#fff'
+        });
+
+        // 点击抽取示例函数，真实情况调用你的Python后台接口
+        function fetchPoem() {
+            const color = document.getElementById('colorPicker').value;
+            // 这里调用后端接口传color，获取随机相关诗句，示范先写死
+            const poems = {
+                "风": "《蝶恋花》—苏轼：春风又绿江南岸，明月何时照我还？",
+                "花": "《如梦令》—李清照：昨夜雨疏风骤，浓睡不消残酒。",
+                "雪": "《白雪歌送武判官归京》—岑参：北风卷地白草折，胡天八月即飞雪。",
+                "月": "《水调歌头》—苏轼：明月几时有，把酒问青天。"
+            };
+            const keys = Object.keys(poems);
+            const pick = keys[Math.floor(Math.random() * keys.length)];
+            document.getElementById('result').textContent = `颜色: ${color}\n抽到意象: ${pick}\n对应诗句:\n${poems[pick]}`;
+        }
+    </script>
+</body>
+</html>
